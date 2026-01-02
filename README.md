@@ -45,7 +45,6 @@ Built entirely with **React**, this app lets you write, run, and experiment with
 - **Monaco Editor**
 - **Web Workers**
 - **CSS (custom theming)**
-- **Vite** (build tool)
 
 ---
 
