@@ -1,6 +1,8 @@
 function serialize(value) {
+  if (typeof value === "string") return value;
+
   try {
-    return JSON.parse(JSON.stringify(value));
+    return JSON.stringify(value, null, 2);
   } catch {
     return String(value);
   }

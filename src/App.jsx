@@ -33,10 +33,20 @@ export default function App() {
     setLogs([]);
     const collected = [];
 
+    const safeSerialize = (value) => {
+      if (typeof value === "string") return value;
+  
+      try {
+        return JSON.stringify(value, null, 2);
+      } catch {
+        return String(value);
+      }
+    };
+
     const fakeConsole = {
-      log: (...args) => collected.push({ type: "log", payload: args }),
-      warn: (...args) => collected.push({ type: "warn", payload: args }),
-      error: (...args) => collected.push({ type: "error", payload: args }),
+      log: (...args) => collected.push({ type: "log", payload: args.map(safeSerialize) }),
+      warn: (...args) => collected.push({ type: "warn", payload: args.map(safeSerialize) }),
+      error: (...args) => collected.push({ type: "error", payload: args.map(safeSerialize) }),
     };
 
     try {
