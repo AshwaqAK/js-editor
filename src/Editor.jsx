@@ -1,7 +1,7 @@
 import * as monaco from "monaco-editor";
 import { useEffect, useRef } from "react";
 
-export default function Editor({ value, onChange, theme }) {
+export default function Editor({ value, onChange, theme, onMount }) {
   const containerRef = useRef(null);
   const editorRef = useRef(null);
   const valueRef = useRef(value);
@@ -10,9 +10,8 @@ export default function Editor({ value, onChange, theme }) {
   useEffect(() => {
     if (!containerRef.current) return;
 
-    // Create the editor
     editorRef.current = monaco.editor.create(containerRef.current, {
-      value: value,
+      value,
       language: "javascript",
       theme: theme.name || "vs-dark",
       automaticLayout: true,
@@ -23,6 +22,11 @@ export default function Editor({ value, onChange, theme }) {
       wordWrap: "on",
       tabSize: 2,
     });
+
+    // 🔥 Expose editor + monaco to parent
+    if (onMount) {
+      onMount(editorRef.current, monaco);
+    }
 
     // Listen for content changes
     const disposable = editorRef.current.onDidChangeModelContent(() => {
@@ -37,14 +41,11 @@ export default function Editor({ value, onChange, theme }) {
     };
   }, []);
 
-  // Update editor value when prop changes from outside
+  // Update editor value when prop changes
   useEffect(() => {
     if (editorRef.current && value !== valueRef.current) {
-      const model = editorRef.current.getModel();
-      if (model) {
-        editorRef.current.setValue(value);
-        valueRef.current = value;
-      }
+      editorRef.current.setValue(value);
+      valueRef.current = value;
     }
   }, [value]);
 
