@@ -6,10 +6,22 @@ export default function Editor({ value, onChange, theme, onMount }) {
   const editorRef = useRef(null);
   const valueRef = useRef(value);
 
-  // Initialize Monaco Editor
   useEffect(() => {
     if (!containerRef.current) return;
 
+    /* ==================== ENABLE MODERN JS ==================== */
+    monaco.typescript.javascriptDefaults.setCompilerOptions({
+      target: monaco.typescript.ScriptTarget.ES2020,
+      allowNonTsExtensions: true,
+      lib: ["es2020", "dom"],
+    });
+
+    monaco.typescript.javascriptDefaults.setDiagnosticsOptions({
+      noSemanticValidation: false,
+      noSyntaxValidation: false,
+    });
+
+    /* ==================== CREATE EDITOR ==================== */
     editorRef.current = monaco.editor.create(containerRef.current, {
       value,
       language: "javascript",
@@ -23,12 +35,12 @@ export default function Editor({ value, onChange, theme, onMount }) {
       tabSize: 2,
     });
 
-    // 🔥 Expose editor + monaco to parent
+    /* ==================== EXPOSE TO PARENT ==================== */
     if (onMount) {
       onMount(editorRef.current, monaco);
     }
 
-    // Listen for content changes
+    /* ==================== CHANGE LISTENER ==================== */
     const disposable = editorRef.current.onDidChangeModelContent(() => {
       const newValue = editorRef.current.getValue();
       valueRef.current = newValue;
@@ -41,7 +53,7 @@ export default function Editor({ value, onChange, theme, onMount }) {
     };
   }, []);
 
-  // Update editor value when prop changes
+  /* ==================== SYNC VALUE ==================== */
   useEffect(() => {
     if (editorRef.current && value !== valueRef.current) {
       editorRef.current.setValue(value);
@@ -49,7 +61,7 @@ export default function Editor({ value, onChange, theme, onMount }) {
     }
   }, [value]);
 
-  // Update theme when it changes
+  /* ==================== THEME UPDATE ==================== */
   useEffect(() => {
     if (editorRef.current) {
       monaco.editor.setTheme(theme.name || "vs-dark");

@@ -25,25 +25,53 @@ export default function App() {
   const editorRef = useRef(null);
   const monacoRef = useRef(null);
   const workerRef = useRef(null);
+  const timeoutRef = useRef(null);
 
   /* ==================== PERSIST CODE ==================== */
   useEffect(() => {
     localStorage.setItem(LS_CODE, code);
   }, [code]);
 
-  /* ==================== INIT WORKER ==================== */
-  useEffect(() => {
-    workerRef.current = new Worker(
+  /* ==================== RUN CODE (SAFE) ==================== */
+  const runCode = (code) => {
+    // Kill previous worker
+    if (workerRef.current) {
+      workerRef.current.terminate();
+      workerRef.current = null;
+    }
+
+    // Clear previous timeout
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+
+    const worker = new Worker(
       new URL("./runner.worker.js", import.meta.url),
       { type: "module" }
     );
 
-    workerRef.current.onmessage = (e) => {
-      const { logs = [], error } = e.data;
+    workerRef.current = worker;
 
+    // ⏱ Execution timeout (infinite loop protection)
+    timeoutRef.current = setTimeout(() => {
+      worker.terminate();
+      workerRef.current = null;
+
+      setLogs([
+        {
+          type: "error",
+          payload: ["Execution timed out (possible infinite loop)"],
+        },
+      ]);
+    }, 1000);
+
+    worker.onmessage = (e) => {
+      clearTimeout(timeoutRef.current);
+
+      const { logs = [], error } = e.data;
       setLogs(logs);
 
-      // Clear previous error markers
+      // Clear previous runtime markers
       if (editorRef.current && monacoRef.current) {
         const model = editorRef.current.getModel();
         monacoRef.current.editor.setModelMarkers(model, "runtime", []);
@@ -68,26 +96,41 @@ export default function App() {
       }
     };
 
-    return () => {
-      workerRef.current?.terminate();
+    worker.onerror = () => {
+      clearTimeout(timeoutRef.current);
+      worker.terminate();
+      workerRef.current = null;
     };
-  }, []);
 
-  /* ==================== AUTO RUN (ON CODE CHANGE ONLY) ==================== */
+    worker.postMessage(code);
+  };
+
+  /* ==================== AUTO RUN (DEBOUNCED) ==================== */
   useEffect(() => {
     const timer = setTimeout(() => {
-      workerRef.current?.postMessage(code);
-    }, 400); // debounce
+      runCode(code);
+    }, 400);
 
     return () => clearTimeout(timer);
   }, [code]);
+
+  /* ==================== CLEANUP ==================== */
+  useEffect(() => {
+    return () => {
+      if (workerRef.current) {
+        workerRef.current.terminate();
+      }
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, []);
 
   /* ==================== RENDER ==================== */
   return (
     <div className={`app theme-${themeName}`}>
       {/* ===== Toolbar ===== */}
       <div className="toolbar">
-        {/* Brand */}
         <div className="brand">AQ Editor</div>
 
         <div className="actions">
